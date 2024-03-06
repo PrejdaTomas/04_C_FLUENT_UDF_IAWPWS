@@ -10,9 +10,10 @@
 #define BUF_SIZE_STRING 512
 
 
-void swap(int* a, int* b);
-int partition(int *arr, int low, int high);
-void quickSort(int *arr, int low, int high);
+void swap(double* a, double* b);
+int partition(double arr[], int low, int high);
+void quickSort(double arr[], int low, int high);
+
 void swapbsort(int* xp, int* yp);
 void bubbleSort(int *arr, int n);
 
@@ -84,70 +85,39 @@ int main()
 
 
 
-void swap(int* a, int* b) 
-{ 
-	//printf("\tQuicksort: Pivot swap!\n");
-	int temp = *a; 
-	*a = *b; 
-	*b = temp; 
-	//printf("\t\tQuicksort: Pivot Swap success!\n");
-} 
-  
-// Partition function 
-int partition(int *arr, int low, int high) 
-{ 
-	//printf("\tQuicksort: Partitioning of array!\n");
-	// initialize pivot to be the first element 
-	int pivot = arr[low]; 
-	int i = low; 
-	int j = high; 
-  
-	while (i < j) { 
-  
-		// condition 1: find the first element greater than 
-		// the pivot (from starting) 
-		while (arr[i] <= pivot && i <= high - 1) { 
-			i++; 
-		} 
-  
-		// condition 2: find the first element smaller than 
-		// the pivot (from last) 
-		while (arr[j] > pivot && j >= low + 1) { 
-			j--; 
-		} 
-		if (i < j) { 
-			swap(&arr[i], &arr[j]); 
-		} 
-	} 
-	swap(&arr[low], &arr[j]); 
-	//printf("\t\tPartitioning Quicksort Success!\n");
-	return j; 
-} 
-  
-// QuickSort function 
-void quickSort(int *arr, int low, int high) 
-{ 
-	//printf("Quicksort of array!\n");
-	if (low < high) { 
-  
-		// call Partition function to find Partition Index 
-		int partitionIndex = partition(arr, low, high); 
-  
-		// Recursively call quickSort() for left and right 
-		// half based on partition Index 
-		quickSort(arr, low, partitionIndex - 1); 
-		quickSort(arr, partitionIndex + 1, high); 
-	} 
-	//printf("\tQuicksort succesful!\n");
-} 
-
-
-
-void swapbsort(int* xp, int* yp)
+void swap(double* a, double* b)
 {
-    int temp = *xp;
-    *xp = *yp;
-    *yp = temp;
+	double temp = *a;
+	*a = *b;
+	*b = temp;
+}
+
+int partition(double arr[], int low, int high)
+{
+	double pivot = arr[high];
+	int i = low - 1;
+	int j;
+
+	for (int j = low; j < high; j++)
+	{
+		if (arr[j] <= pivot)
+		{
+		            i++;
+		            swap(&arr[i], &arr[j]);
+	        }
+	}
+	swap(&arr[i + 1], &arr[high]);
+	return i + 1;
+}
+
+void quickSort(double arr[], int low, int high)
+{
+	if (low < high)
+	{
+		int partitionIndex = partition(arr, low, high);
+		quickSort(arr, low, partitionIndex - 1);
+		quickSort(arr, partitionIndex + 1, high);
+	}
 }
  
 // An optimized version of Bubble Sort
@@ -205,7 +175,7 @@ double *arrayGen1D(int count)
 double **arrayGen2D(int countRow, int countCol)
 {
 	printf("Generating 2D array!\n");
-	double **nuArray = (double**)malloc(sizeof(double*)*countRow*countCol);
+	double **nuArray = (double**)malloc(sizeof(double*)*countRow);
 	int indexRow;
 	int indexCol;
 	for (indexRow = 0; indexRow < countRow; indexRow++)
@@ -497,11 +467,11 @@ double **readFromCSV(char *path)
 	char *headers[32]; 
 	char line[BUF_SIZE_STRING];
 	char *data;
-	double **nuArray = (double**)malloc(sizeof(double*)*(rowCount));
+	double **nuArray = (double**)malloc(sizeof(double*)*rowCount);
 
 	for (position = 0; position < rowCount; position++)
 	{
-		nuArray[position] = (double*)malloc(sizeof(double)*(columnCount));
+		nuArray[position] = (double*)malloc(sizeof(double)*columnCount);
 	}
 
 	FILE* file = fopen(path, "r");
