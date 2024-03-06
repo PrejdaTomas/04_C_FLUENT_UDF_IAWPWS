@@ -62,8 +62,9 @@ int main()
 	printArray1D(row_count_array, pressures);
 	printArray1D(row_count_array, temperatures);
 
-	quickSort(temperatures, 0, row_count_array - 1); 
-	quickSort(pressures, 0, row_count_array - 1); 
+	quickSort(temperatures, 0, row_count_array -1 ); 
+	quickSort(pressures, 0, row_count_array -1 ); 
+
 	//bubbleSort(temperatures, row_count_array);
 	//bubbleSort(pressures, row_count_array);
 	printArray1D(row_count_array, pressures);
@@ -98,7 +99,7 @@ int partition(double arr[], int low, int high)
 	int i = low - 1;
 	int j;
 
-	for (int j = low; j < high; j++)
+	for (j = low; j < high; j++)
 	{
 		if (arr[j] <= pivot)
 		{
@@ -120,6 +121,8 @@ void quickSort(double arr[], int low, int high)
 	}
 }
  
+
+
 // An optimized version of Bubble Sort
 void bubbleSort(int *arr, int n)
 {
@@ -129,7 +132,7 @@ void bubbleSort(int *arr, int n)
         swapped = false;
         for (j = 0; j < n - i - 1; j++) {
             if (arr[j] > arr[j + 1]) {
-                swapbsort(&arr[j], &arr[j + 1]);
+                swap(&arr[j], &arr[j + 1]);
                 swapped = true;
             }
         }
@@ -291,7 +294,7 @@ double *createUniqueValuesArray(int countRow, double *arrayIpt)
 	printf("\tReached the next unique value! Breaking at %d unique values!\n", uniqueVals);
 	
 
-	double *nuArray = (double*)malloc(sizeof(double)*(uniqueVals+1));
+	double *nuArray = (double*)malloc(sizeof(double)*uniqueVals);
 	printf("\tCreating a 1D array of unique values!\n");
 	for (position_1 = 0; position_1 < countRow; position_1++)
 	{
@@ -337,8 +340,11 @@ double *extractColumnFromTable(int index, double **arrayIpt)
 {
 	printf("Extracting column from a read table!\n");
 	int position;
+	printf("\tExtracting column: getting the numLines!\n");
 	int numLines	= countLinesReadTable(arrayIpt);
+	printf("\tExtracted column will have %d lines!\n", numLines);
 	double *nuArray = (double*)malloc(sizeof(double)*numLines);
+
 	for (position = 0; position < numLines; position++)
 	{
 		nuArray[position] = arrayIpt[position][index];
