@@ -135,6 +135,66 @@ double drand(double loBound, double hiBound);
 
 const int debugLevel 	= Main;
 
+
+
+
+int main()
+{
+	double total;
+	int attempt;
+	double tempK, pressMPa, bilerp;
+
+	clock_t start, end;
+	fprintfWrapper_newline_MAIN("start -> debugLevel = %d", debugLevel);
+
+	char *tablefilePath		= "table.csv";
+
+	total = 0;
+	start = clock();
+	Array2D readTable		= readFromCSV(tablefilePath);
+	end = clock();
+	fprintfWrapper_newline_MAIN("Finished reading the csv in the main loop: \t%lf!", timer(start, end));
+	
+	total = 0;
+	start = clock();
+	Array1D temperatures		= extractColumnFromTable(readTable, 0);
+	sortAscendingStruct1D(temperatures);
+	Array1D uniqueTemperatures	= createUniqueValuesArray1D(temperatures);
+	end = clock();;
+	fprintfWrapper_newline_MAIN("Finished creating the unique temperatures in the main loop: \t%lf!", timer(start, end));
+	
+	total = 0;
+	start = clock();
+	Array1D pressures		= extractColumnFromTable(readTable, 1);
+	sortAscendingStruct1D(pressures);
+	Array1D uniquePressures = createUniqueValuesArray1D(pressures);	
+	end = clock();
+	fprintfWrapper_newline_MAIN("Finished creating the unique pressures in the main loop: \t%lf!", timer(start, end));
+	
+
+
+	attempt = 0;
+	total = 0;
+	while (attempt < BENCHMARK_TRIES)
+	{
+		tempK = drand(uniqueTemperatures.array[0], uniqueTemperatures.array[uniqueTemperatures.last]);
+		pressMPa = drand(uniquePressures.array[0], uniquePressures.array[uniquePressures.last]);
+        	if (attempt % 50 == 0) {fprintfWrapper_newline_MAIN("%d: [%lf K, %lf MPa]", attempt, tempK, pressMPa);}
+
+		start = clock();
+		bilerp = interpolation2D_bilinear(readTable, tempK, pressMPa, RHO, uniqueTemperatures, uniquePressures);
+		end = clock();
+		total += timer(start, end);
+		attempt ++;
+	}
+	total = total/(double)(BENCHMARK_TRIES);
+	fprintfWrapper_newline_MAIN("Bilerp [%lf, %lf]: %lf\t%lfs", tempK, pressMPa, bilerp, total);
+
+	fprintfWrapper_newline_MAIN("end");
+	return 1;
+}
+
+
 #pragma region RGEOS
 #pragma region CONVENIENCE
 double absDiff(double value1, double value2)
