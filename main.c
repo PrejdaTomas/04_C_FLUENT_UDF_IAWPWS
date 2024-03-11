@@ -1252,7 +1252,11 @@ int countColumnsFile(char *filePath)
 		for(;;)
 		{
 				size_t res = fread(buf, 1, BUFFER_SIZE, file);
-				if (ferror(file)) { return -1; }
+				if (ferror(file))
+				{
+					fprintfWrapper_tail("countColumnsFile: failure -> corrupted file %s", filePath);
+					exit(1);
+				}
 
 				int i;
 				for(i = 0; i < res; i++)
