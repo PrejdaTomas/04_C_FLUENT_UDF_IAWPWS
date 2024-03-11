@@ -4,20 +4,21 @@
 #include <stdbool.h>
 #include <string.h>
 #include <math.h>
-
+#include <time.h>
 
 #define BUFFER_SIZE			65536 //65536
-#define BUFFER_SIZE_STRING		1024 //512
+#define BUFFER_SIZE_STRING		512 //512
 #define ITER_PRINT_FREQUENCY		50
 #define COMPARE_THRESHOLD		0.000001
 #define SEARCH_THRESHOLD 		0.01
+#define BENCHMARK_TRIES		 1000
 
 enum debugLevelSelected {
 	NONE = 0,
 	Main = 1,
 	MainAndFuncbounds = 2,
 	MainAndFuncboundsAndUpper = 3,
-    MainAndFuncboundsAndUpperAndLower = 4
+	MainAndFuncboundsAndUpperAndLower = 4
 };
 
 enum tableColumn{
@@ -44,7 +45,6 @@ typedef struct
 	int		count;
 	int		last;
 } Array1D;
-
 
 typedef struct
 {
@@ -79,7 +79,7 @@ void fprintfWrapper_comma(const char* format, ...);
 
 
 void	swap(double* a, double* b);
-int     partition(double arr[], int low, int high);
+int	partition(double arr[], int low, int high);
 void	quickSort_inner(double arr[], int low, int high);
 void	quickSort(double arr[], int count);
 
@@ -92,13 +92,13 @@ int countUniqueVals1D(Array1D arrayIpt);
 int countNonUniqueVals1D(Array1D arrayIpt);
 
 
-double minimumStruct1D_value(Array1D arrayIpt);
-int minimumStruct1D_index(Array1D arrayIpt);
-double maximumStruct1D_value(Array1D arrayIpt);
-int maximumStruct1D_index(Array1D arrayIpt);
-double sumStruct1D_value(Array1D arrayIpt);
-double averageStruct1D_value(Array1D arrayIpt);
-
+double	minimumStruct1D_value(Array1D arrayIpt);
+int	minimumStruct1D_index(Array1D arrayIpt);
+double	maximumStruct1D_value(Array1D arrayIpt);
+int	maximumStruct1D_index(Array1D arrayIpt);
+double	sumStruct1D_value(Array1D arrayIpt);
+double	averageStruct1D_value(Array1D arrayIpt);
+double  timer(time_t start, time_t end);
 
 
 int findClosest1D_linear(double variable, Array1D arrayIpt);
@@ -129,36 +129,65 @@ bool valueInArray(double compared, Array1D arrayIpt);
 
 double absDiff(double value1, double value2);
 double absError(double value1, double value2);
+double drand(double loBound, double hiBound);
 
 const int debugLevel 	= Main;
-//fflush(stdout); /*branim se preteceni stdout bufferu a sigsegv*/
+
 
 
 int main()
 {
+	double total;
+	int attempt;
+	double tempK, pressMPa, bilerp;
+
+	clock_t start, end;
 	fprintfWrapper_newline_MAIN("start -> debugLevel = %d", debugLevel);
 
 	char *tablefilePath		= "table.csv";
+
+	total = 0;
+	start = clock();
 	Array2D readTable		= readFromCSV(tablefilePath);
-    
-    fprintfWrapper_newline_MAIN("Finished reading the csv in the main loop!");
-
-
+	end = clock();
+	fprintfWrapper_newline_MAIN("Finished reading the csv in the main loop: \t%lf!", timer(start, end));
+	
+	total = 0;
+	start = clock();
 	Array1D temperatures		= extractColumnFromTable(readTable, 0);
 	sortAscendingStruct1D(temperatures);
 	Array1D uniqueTemperatures	= createUniqueValuesArray1D(temperatures);
-
+	end = clock();;
+	fprintfWrapper_newline_MAIN("Finished creating the unique temperatures in the main loop: \t%lf!", timer(start, end));
+	
+	total = 0;
+	start = clock();
 	Array1D pressures		= extractColumnFromTable(readTable, 1);
 	sortAscendingStruct1D(pressures);
-	Array1D uniquePressures = createUniqueValuesArray1D(pressures);
+	Array1D uniquePressures = createUniqueValuesArray1D(pressures);	
+	end = clock();
+	fprintfWrapper_newline_MAIN("Finished creating the unique pressures in the main loop: \t%lf!", timer(start, end));
+	
 
-	double tempK		= 506.1;
-	double pressMPa		= 6.0;
 
-	double bilerp = interpolation2D_bilinear(readTable, tempK, pressMPa, RHO, uniqueTemperatures, uniquePressures);
-	fprintfWrapper_newline_MAIN("Bilerp [%lf, %lf]: %lf", tempK, pressMPa, bilerp);
+	attempt = 0;
+	total = 0;
+	while (attempt < BENCHMARK_TRIES)
+	{
+		tempK = drand(uniqueTemperatures.array[0], uniqueTemperatures.array[uniqueTemperatures.last]);
+		pressMPa = drand(uniquePressures.array[0], uniquePressures.array[uniquePressures.last]);
+        	if (attempt % 50 == 0) {fprintfWrapper_newline_MAIN("%d: [%lf K, %lf MPa]", attempt, tempK, pressMPa);}
+
+		start = clock();
+		bilerp = interpolation2D_bilinear(readTable, tempK, pressMPa, RHO, uniqueTemperatures, uniquePressures);
+		end = clock();
+		total += timer(start, end);
+		attempt ++;
+	}
+	total = total/(double)(BENCHMARK_TRIES);
+	fprintfWrapper_newline_MAIN("Bilerp [%lf, %lf]: %lf\t%lfs", tempK, pressMPa, bilerp, total);
+
 	fprintfWrapper_newline_MAIN("end");
-	fflush(stdout);
 	return 1;
 }
 
@@ -200,6 +229,16 @@ char* strConcat(const char *s1, const char *s2)
 	memcpy(result, s1, len1);
 	memcpy(result + len1, s2, len2 + 1);
 	return result;
+}
+
+double timer(clock_t start, clock_t end)
+{
+	return ((double)(end-start))/ CLOCKS_PER_SEC;
+}
+
+double drand (double low, double high)
+{
+	return ((double)rand() * ( high - low )) / (double)RAND_MAX + low;
 }
 #pragma endregion CONVENIENCE
 
@@ -283,7 +322,7 @@ void fprintfWrapper_newline_MAIN(const char* format, ...)
 	{
 		va_list args;				/* načte argumenty do listu*/		
 		va_start(args, format);			/* vloží argumenty do textu s %d %f %s... */
-        fprintf(stdout, "MAIN:\t");
+		fprintf(stdout, "MAIN:\t");
 		fprintfWrapper(format, args);
 		fprintf(stdout, "\n");
 		va_end(args);				/* pročistí array s argumenty */
@@ -318,12 +357,12 @@ void copyArray1DNative_toArray1DNative(double *source, double *target, int count
 	int index;
 
 	free(target);
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: freed the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: freed the target array!");
 
 	target = (double*)malloc(sizeof(double) * count);
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: re-mallocated the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: re-mallocated the target array!");
 
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: copying the values!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: copying the values!");
 	for (index = 0; index < count; index++)
 	{
 		fprintfWrapper_newline_mid_lower("copyArray1DNative_toArray1DNative: index %d", index);
@@ -337,10 +376,10 @@ void copyArray1DNative_toArray1DStruct(double *source, Array1D *target)
 	fprintfWrapper_newline_head("copyArray1DNative_toArray1DStruct: start -> %d elements!", target->count);
 	int index;
 	free(target->array);
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: freed the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: freed the target array!");
 
 	target->array = (double*)malloc(sizeof(double) * (target->count));
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: re-mallocated the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: re-mallocated the target array!");
 
 	if (target->array == NULL || source == NULL)
 	{
@@ -348,7 +387,7 @@ void copyArray1DNative_toArray1DStruct(double *source, Array1D *target)
 		exit(1); // Handle allocation failure
 	}
 
-    fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: copying the values!");
+	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: copying the values!");
 	for (index = 0; index < target->count; index++)
 	{
 		fprintfWrapper_newline_mid_lower("copyArray1DNative_toArray1DStruct: index %d", index);
@@ -367,13 +406,13 @@ void copyArray1Dstruct_toArray1DNative(Array1D *source, double *target)
 	}
 	int index;
 	free(target);
-    fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: freed the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: freed the target array!");
 	target = (double*)malloc(sizeof(double) *(source->count));
-    fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative:  re-mallocated the target array!");
+	fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: re-mallocated the target array!");
 
 
 
-    fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: copying the values!");
+	fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: copying the values!");
 	for (index = 0; index < source->count; index++)
 	{
 		fprintfWrapper_newline_mid_lower("copyArray1Dstruct_toArray1DNative: index %d", index);
@@ -429,9 +468,9 @@ Array1D createUniqueValuesArray1D(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("createUniqueValuesArray1D: start!");
 
-	int position_1  = 0;
-	int position_2  = 1;
-	int uniqueVals  = countUniqueVals1D(arrayIpt);
+	int position_1 = 0;
+	int position_2 = 1;
+	int uniqueVals = countUniqueVals1D(arrayIpt);
 
 	fprintfWrapper_newline_mid_upper("createUniqueValuesArray1D: reached unique value -> Breaking at %d unique values!", uniqueVals);
 	
@@ -454,7 +493,7 @@ Array1D createUniqueValuesArray1D(Array1D arrayIpt)
 			position_2++;
 		}
 	}
-    printArrayStruct1D(nuArray);
+	printArrayStruct1D(nuArray);
 	fprintfWrapper_newline_tail("createUniqueValuesArray1D: success! -> %d values", nuArray.count);
 	return nuArray;
 }
@@ -468,8 +507,8 @@ Array1D extractColumnFromTable(Array2D arrayIpt, int selectedColumn)
 	fprintfWrapper_newline_mid_upper("extractColumnFromTable: extracted column will have %d lines!", arrayIpt.rows);
 	Array1D nuArray = createArrayStruct1D(arrayIpt.rows);
 
-    fprintfWrapper_newline_mid_upper("extractColumnFromTable: initialized the column!");
-    fprintfWrapper_newline_mid_upper("extractColumnFromTable: filling the column!");
+	fprintfWrapper_newline_mid_upper("extractColumnFromTable: initialized the column!");
+	fprintfWrapper_newline_mid_upper("extractColumnFromTable: filling the column!");
 	for (rowIndex_arrayIpt = 0; rowIndex_arrayIpt < arrayIpt.rows; rowIndex_arrayIpt++)
 	{
 		nuArray.array[rowIndex_arrayIpt] = arrayIpt.array[rowIndex_arrayIpt][selectedColumn];
@@ -481,7 +520,7 @@ Array1D extractColumnFromTable(Array2D arrayIpt, int selectedColumn)
 			arrayIpt.array[rowIndex_arrayIpt][selectedColumn]
 		);
 	}
-    printArrayStruct1D(nuArray);
+	printArrayStruct1D(nuArray);
 	fprintfWrapper_newline_tail("extractColumnFromTable: success!");
 	return nuArray;
 }
@@ -496,7 +535,7 @@ Array1D differences1D(double value, Array1D arrayIpt)
 	for (index = 0; index < nuArray.count; index++)
 	{
 		nuArray.array[index] = absDiff(arrayIpt.array[index], value);
-	    fprintfWrapper_newline_mid_lower("nuArray.array[%d] =  %lf",index, nuArray.array[index]);
+		fprintfWrapper_newline_mid_lower("nuArray.array[%d] = %lf",index, nuArray.array[index]);
 	}
 	fprintfWrapper_newline_head("differences1D: success!");
 	return nuArray;
@@ -511,7 +550,7 @@ Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
 
 	fprintfWrapper_newline_mid_upper("getRectangle: index MOD yUnique -> %d MOD yUnique %d = %d", index, yUnique, index%yUnique);
 
-	if (index < 0 || index > arrayIpt.lastRow)
+	if (index < 0 || index >= arrayIpt.lastRow)
 	{
 		fprintfWrapper_newline_tail("getRectangle: failure -> target index: %d < 0 or %d > %d", index, index, arrayIpt.lastRow);
 		exit(1);
@@ -550,7 +589,6 @@ Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
 
 
 
-
 	// left edge value
 	if ((index < yUnique))
 	{
@@ -562,17 +600,34 @@ Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
 	}
 
 	// right edge value
-	else if ((index >= (nuArray.lastRow - yUnique)) || (index <= nuArray.lastRow))
+	else if (	(index >= (arrayIpt.lastRow - yUnique))	)
 	{	
-		fprintfWrapper_newline_mid_upper("getRectangle: v2 -> x in (lastRow - yUnique, lastRow)\t %d in (%d, %d)",
-		index, (arrayIpt.lastRow-yUnique), arrayIpt.lastRow
-		);
-		TOP_LEFT	= index		- yUnique;
-		TOP_RIGHT	= TOP_LEFT	+ 1;
-		BOT_LEFT	= TOP_LEFT	+ yUnique;
-		BOT_RIGHT	= TOP_RIGHT	+ yUnique;
+
+		// have not surpassed the bounds yet
+		if (index <= arrayIpt.lastRow)
+		{
+			fprintfWrapper_newline_mid_upper("getRectangle: v2A -> x in (lastRow - yUnique, lastRow)\t %d in (%d, %d)",
+			index, (arrayIpt.lastRow-yUnique), arrayIpt.lastRow
+			);
+			TOP_LEFT	= index		- yUnique;
+			TOP_RIGHT	= TOP_LEFT	+ 1;
+			BOT_LEFT	= TOP_LEFT	+ yUnique;
+			BOT_RIGHT	= TOP_RIGHT	+ yUnique;
+		}
+		
+		// the bounds have been surpassed
+		else
+		{
+			fprintfWrapper_newline_mid_upper("getRectangle: v2B -> x > lastRow\t %d > %d",
+			index, arrayIpt.lastRow
+			);
+			TOP_LEFT	= index		- 2*yUnique;
+			TOP_RIGHT	= TOP_LEFT	+ 1;
+			BOT_LEFT	= index 	- 1*yUnique;
+			BOT_RIGHT	= TOP_RIGHT	+ yUnique;
+		}
 	}
-	
+
 	//middle value
 	else
 	{		
@@ -584,7 +639,7 @@ Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
 		BOT_LEFT	= TOP_LEFT	+ yUnique;
 		BOT_RIGHT	= TOP_RIGHT	+ yUnique;
 	}
-
+	
 	nuArray.array[TL] = arrayIpt.array[TOP_LEFT];
 	nuArray.array[BL] = arrayIpt.array[BOT_LEFT];
 	nuArray.array[TR] = arrayIpt.array[TOP_RIGHT];
@@ -665,14 +720,14 @@ Array2D readFromCSV(char *filePath)
 			//fprintfWrapper_newline_mid_upper("readFromCSV: next outer while loop iter!");
 			lineNum++;
 		}
-		//if (lineNum < 50)   {newline(1);}
-		if (lineNum == ITER_PRINT_FREQUENCY)  {fprintfWrapper_newline_mid_upper("readFromCSV: End of table preview!");}
+		//if (lineNum < 50) {newline(1);}
+		if (lineNum == ITER_PRINT_FREQUENCY) {fprintfWrapper_newline_mid_upper("readFromCSV: End of table preview!");}
 		nuArray.headers = headers;
 
 		fprintfWrapper_newline_mid_upper("readFromCSV: closing %s", filePath);
 		fclose(file);
 
-        printArrayStruct2D(nuArray);
+		printArrayStruct2D(nuArray);
 		fprintfWrapper_newline_tail("readFromCSV: success -> read %s into a 2D array with %d rows and %d columns", filePath, nuArray.rows, nuArray.columns);
 		return nuArray;
 	}
@@ -730,14 +785,14 @@ void quickSort_inner(double arr[], int low, int high)
 void sortAscendingStruct1D(Array1D arrayInput)
 {
 	fprintfWrapper_newline_head("sortAscendingStruct1D: start!");
-	double *arrayNativeTmp  = (double*)malloc(sizeof(double)*arrayInput.count);
+	double *arrayNativeTmp = (double*)malloc(sizeof(double)*arrayInput.count);
 	copyArray1Dstruct_toArray1DNative(&arrayInput, arrayNativeTmp);
 	if (debugLevel >= MainAndFuncboundsAndUpper) {printArrayNative1D_double(arrayNativeTmp, arrayInput.count);}
 
 	quickSort(arrayNativeTmp, arrayInput.count);
 
 	copyArray1DNative_toArray1DStruct(arrayNativeTmp, &arrayInput);
-	if (debugLevel  >= MainAndFuncboundsAndUpper) {printArrayStruct1D(arrayInput);}
+	if (debugLevel >= MainAndFuncboundsAndUpper) {printArrayStruct1D(arrayInput);}
 	/*free(arrayNativeTmp);
 	fprintfWrapper_newline_mid_upper("sourtAscendingStruct1D: freed the temporary array");*/
 	fprintfWrapper_newline_tail("sortAscendingStruct1D: success!");
@@ -872,7 +927,7 @@ double interpolation2D_bilinear(Array2D arrayIpt, double x, double y, enum table
 		exit(1);
 	}
 
-    fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: passed the range checks!");
+	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: passed the range checks!");
 	double result;
 
 
@@ -903,11 +958,11 @@ double interpolation2D_bilinear(Array2D arrayIpt, double x, double y, enum table
 
 
 	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: points:");
-	fprintfWrapper_newline_mid_lower("point_11[%lf, %lf, %lf]",  point_11[T], point_11[P], point_11[selectedColumn]);
-	fprintfWrapper_newline_mid_lower("point_21[%lf, %lf, %lf]",  point_21[T], point_21[P], point_21[selectedColumn]);
-	fprintfWrapper_newline_mid_lower("point_12[%lf, %lf, %lf]",  point_12[T], point_12[P], point_12[selectedColumn]);
-	fprintfWrapper_newline_mid_lower("point_22[%lf, %lf, %lf]",  point_22[T], point_22[P], point_22[selectedColumn]);
-	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: x1: %lf,  x2: %lf,  y1: %lf,  y2: %lf", x1, x2, y1, y2);
+	fprintfWrapper_newline_mid_lower("point_11[%lf, %lf, %lf]", point_11[T], point_11[P], point_11[selectedColumn]);
+	fprintfWrapper_newline_mid_lower("point_21[%lf, %lf, %lf]", point_21[T], point_21[P], point_21[selectedColumn]);
+	fprintfWrapper_newline_mid_lower("point_12[%lf, %lf, %lf]", point_12[T], point_12[P], point_12[selectedColumn]);
+	fprintfWrapper_newline_mid_lower("point_22[%lf, %lf, %lf]", point_22[T], point_22[P], point_22[selectedColumn]);
+	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: x1: %lf, x2: %lf, y1: %lf, y2: %lf", x1, x2, y1, y2);
 	
 
 
@@ -960,10 +1015,10 @@ double minimumStruct1D_value(Array1D arrayIpt)
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < minValue)
-        {
-            minValue = arrayIpt.array[index];
-            fprintfWrapper_newline_mid_lower("index %d: %lf", index, minValue);
-        }
+		{
+			minValue = arrayIpt.array[index];
+			fprintfWrapper_newline_mid_lower("index %d: %lf", index, minValue);
+		}
 	}
 	fprintfWrapper_newline_tail("minimumStruct1D_value: success! -> minimum: %lf", minValue);
 	return minValue;
@@ -980,7 +1035,7 @@ int minimumStruct1D_index(Array1D arrayIpt)
 		if (arrayIpt.array[index] < minValue)
 		{
 			minValue = arrayIpt.array[index];
-            fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, minValue, targetIndex);
+			fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, minValue, targetIndex);
 			targetIndex++;
 		}
 	}
@@ -996,10 +1051,10 @@ double maximumStruct1D_value(Array1D arrayIpt)
 	for (index = 0; index > arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < maxValue)
-        {
-            maxValue = arrayIpt.array[index];
-            fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, maxValue);
-        }
+		{
+			maxValue = arrayIpt.array[index];
+			fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, maxValue);
+		}
 	}
 	fprintfWrapper_newline_tail("maximumStruct1D_value: success! -> minimum: %lf", maxValue);
 	return maxValue;
@@ -1017,7 +1072,7 @@ int maximumStruct1D_index(Array1D arrayIpt)
 		{
 			maxValue = arrayIpt.array[index];
 			targetIndex++;
-            fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, maxValue, targetIndex);
+			fprintfWrapper_newline_mid_lower("index: %d -> value %lf: %d", index, maxValue, targetIndex);
 		}
 	}
 	fprintfWrapper_newline_tail("maximumStruct1D_index: success! -> maximum index: %d", targetIndex);
@@ -1030,10 +1085,10 @@ double sumStruct1D_value(Array1D arrayIpt)
 	double sum = 0.0;
 	int index = 0;
 	for (index = 0; index < arrayIpt.count; index++)
-    {
-        sum = sum + arrayIpt.array[index];
-        fprintfWrapper_newline_mid_lower("index %d: %lf", index, sum);
-    }
+	{
+		sum = sum + arrayIpt.array[index];
+		fprintfWrapper_newline_mid_lower("index %d: %lf", index, sum);
+	}
 	fprintfWrapper_newline_tail("sumStruct1D_value: success! -> sum: %lf", sum);
 	return sum;
 }
@@ -1056,7 +1111,7 @@ int findClosest1D_linear(double variable, Array1D arrayIpt)
 	printArrayStruct1D(diffs);
 	int index;
 
-    fprintfWrapper_newline_mid_lower("findClosest1D_linear: searching!");
+	fprintfWrapper_newline_mid_lower("findClosest1D_linear: searching!");
 	for (index = 0; index < diffs.count; index++)
 	{
 		fprintfWrapper_newline_mid_lower("index: %d | dPhi: %lf", index, diffs.array[index]);
@@ -1155,7 +1210,7 @@ int countLinesFile(char *filePath)
 		{
 				size_t res = fread(buf, 1, BUFFER_SIZE, file);
 				if (ferror(file))
-				{   
+				{ 
 					fprintfWrapper_newline_tail("countLinesFile: failure -> ferror(%s)", filePath) ;
 					exit(1);
 				}
@@ -1173,7 +1228,7 @@ int countLinesFile(char *filePath)
 		fprintfWrapper_newline_tail("countLinesFile: success -> lines in %s: %d", filePath, counter);
 		return counter;
 	}
-	fprintfWrapper_newline_tail("countLinesFile: failure -> not exist:  %s", filePath);
+	fprintfWrapper_newline_tail("countLinesFile: failure -> not exist: %s", filePath);
 	exit(1);
 }
 
@@ -1224,14 +1279,14 @@ int countUniqueVals1D(Array1D arrayIpt)
 	fprintfWrapper_newline_head("countUniqueVals1D: start!");
 	int index = 0;
 	int count = 0;
-    fprintfWrapper_newline_mid_upper("countUniqueVals1D: counting!");
+	fprintfWrapper_newline_mid_upper("countUniqueVals1D: counting!");
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		if(compare(arrayIpt.array[index], arrayIpt.array[index + 1]) == false)
-        {
-            count++;
-        fprintfWrapper_newline_mid_lower("index %d: %d", index, count);
-        }
+		{
+			count++;
+		fprintfWrapper_newline_mid_lower("index %d: %d", index, count);
+		}
 	}
 	fprintfWrapper_newline_tail("countUniqueVals1D: success -> %d unique values!", count);
 	return count;
@@ -1242,14 +1297,14 @@ int countNonUniqueVals1D(Array1D arrayIpt)
 	fprintfWrapper_newline_head("countNonUniqueVals1D: start!");
 	int index = 0;
 	int count = 0;
-    fprintfWrapper_newline_mid_upper("countNonUniqueVals1D: counting!");
+	fprintfWrapper_newline_mid_upper("countNonUniqueVals1D: counting!");
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		if(compare(arrayIpt.array[index], arrayIpt.array[index + 1]) == true)
-        {
-            count++;
-            fprintfWrapper_newline_mid_lower("index %d: %d", index, count);
-        }
+		{
+			count++;
+			fprintfWrapper_newline_mid_lower("index %d: %d", index, count);
+		}
 	}
 	fprintfWrapper_newline_tail("countNonUniqueVals1D: success -> %d non-unique values!", count);
 	return count;
