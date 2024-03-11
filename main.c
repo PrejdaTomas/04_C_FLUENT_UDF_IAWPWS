@@ -5,6 +5,8 @@
 #include <string.h>
 #include <math.h>
 #include <time.h>
+#include "udf.h"
+
 
 #define BUFFER_SIZE			65536 //65536
 #define BUFFER_SIZE_STRING		512 //512
@@ -133,66 +135,7 @@ double drand(double loBound, double hiBound);
 
 const int debugLevel 	= Main;
 
-
-
-int main()
-{
-	double total;
-	int attempt;
-	double tempK, pressMPa, bilerp;
-
-	clock_t start, end;
-	fprintfWrapper_newline_MAIN("start -> debugLevel = %d", debugLevel);
-
-	char *tablefilePath		= "table.csv";
-
-	total = 0;
-	start = clock();
-	Array2D readTable		= readFromCSV(tablefilePath);
-	end = clock();
-	fprintfWrapper_newline_MAIN("Finished reading the csv in the main loop: \t%lf!", timer(start, end));
-	
-	total = 0;
-	start = clock();
-	Array1D temperatures		= extractColumnFromTable(readTable, 0);
-	sortAscendingStruct1D(temperatures);
-	Array1D uniqueTemperatures	= createUniqueValuesArray1D(temperatures);
-	end = clock();;
-	fprintfWrapper_newline_MAIN("Finished creating the unique temperatures in the main loop: \t%lf!", timer(start, end));
-	
-	total = 0;
-	start = clock();
-	Array1D pressures		= extractColumnFromTable(readTable, 1);
-	sortAscendingStruct1D(pressures);
-	Array1D uniquePressures = createUniqueValuesArray1D(pressures);	
-	end = clock();
-	fprintfWrapper_newline_MAIN("Finished creating the unique pressures in the main loop: \t%lf!", timer(start, end));
-	
-
-
-	attempt = 0;
-	total = 0;
-	while (attempt < BENCHMARK_TRIES)
-	{
-		tempK = drand(uniqueTemperatures.array[0], uniqueTemperatures.array[uniqueTemperatures.last]);
-		pressMPa = drand(uniquePressures.array[0], uniquePressures.array[uniquePressures.last]);
-        	if (attempt % 50 == 0) {fprintfWrapper_newline_MAIN("%d: [%lf K, %lf MPa]", attempt, tempK, pressMPa);}
-
-		start = clock();
-		bilerp = interpolation2D_bilinear(readTable, tempK, pressMPa, RHO, uniqueTemperatures, uniquePressures);
-		end = clock();
-		total += timer(start, end);
-		attempt ++;
-	}
-	total = total/(double)(BENCHMARK_TRIES);
-	fprintfWrapper_newline_MAIN("Bilerp [%lf, %lf]: %lf\t%lfs", tempK, pressMPa, bilerp, total);
-
-	fprintfWrapper_newline_MAIN("end");
-	return 1;
-}
-
-
-
+#pragma region RGEOS
 #pragma region CONVENIENCE
 double absDiff(double value1, double value2)
 {
@@ -1252,11 +1195,7 @@ int countColumnsFile(char *filePath)
 		for(;;)
 		{
 				size_t res = fread(buf, 1, BUFFER_SIZE, file);
-				if (ferror(file))
-				{
-					fprintfWrapper_tail("countColumnsFile: failure -> corrupted file %s", filePath);
-					exit(1);
-				}
+				if (ferror(file)) { return -1; }
 
 				int i;
 				for(i = 0; i < res; i++)
@@ -1315,3 +1254,86 @@ int countNonUniqueVals1D(Array1D arrayIpt)
 }
 
 #pragma endregion COUNTS
+
+
+#pragma endregion RGEOS
+Array2D readTable;
+Array1D temperatureList;
+Array1D pressureList;
+
+
+DEFINE_ON_LOADING(I_do_nothing)
+{
+    readTable         = readFromCSV("table.csv");
+    temperatures      = extractColumnFromTable(readTable, T);
+    pressures         = extractColumnFromTable(readTable, P);
+    temperatureTable  = createUniqueValuesArray1D(temperatures);
+    pressureTable     = createUniqueValuesArray1D(pressures); 
+    free(temperatures.array);
+    free(pressures.array);
+}
+
+#pragma region IAPWS_NUTNE
+void IAPWS_INITIALIZER(
+    Domain *domain,
+    cxboolean vapor_phase,
+    char *species_list,
+    int(*messagefunc)(const char *format,...),
+    void (*errorfunc)(const char *format,...)
+)
+{
+    usersMessage = messagefunc;
+    usersError = errorfunc;
+    usersMessage("\nLoading Redlich-Kwong Library: %s\n", species_list);
+}
+
+
+double IAPWS_density(double temp, double pressure)
+{
+    return interpolation2D_bilinear(readTable, temp, pressure, RHO, temperatureTable, pressureTable);
+}
+
+double IAPWS_viscosity(double temp, double pressure)
+{
+    return interpolation2D_bilinear(readTable, temp, pressure, MU, temperatureTable, pressureTable);
+}
+
+double IAPWS_specific_heat(double temp, double pressure)
+{
+    return interpolation2D_bilinear(readTable, temp, pressure, CP, temperatureTable, pressureTable);
+}
+
+double IAPWS_thermal_conductivity(double temp, double pressure)
+{
+    return interpolation2D_bilinear(readTable, temp, pressure, K, temperatureTable, pressureTable);
+}
+#pragma endregion IAPWS_NUTNE
+
+#pragma region IAPWS_DOPLNEK
+double IAPWS_mw(double temp, double pressure)   return 18.0153e-3;
+double IAPWS_enthalpy(double temp, double pressure)   return 0;
+double IAPWS_entropy(double temp, double pressure)   return 0;
+double IAPWS_speed_of_sound(double temp, double pressure)   return 0;
+double IAPWS_rho_t(double temp, double pressure)   return 0;
+double IAPWS_rho_p(double temp, double pressure)   return 0;
+double IAPWS_enthalpy_t(double temp, double pressure)   return 0;
+double IAPWS_enthalpy_p(double temp, double pressure)   return 0;
+#pragma endregion IAPWS_DOPLNEK
+
+UDF_EXPORT RGAS_Functions RealGasFunctionList =
+{
+    IAPWS_INITIALIZER,                 /* initialize           */
+    IAPWS_density,               /* density              */
+    IAPWS_enthalpy,              /* enthalpy             */
+    IAPWS_entropy,               /* entropy              */
+    IAPWS_specific_heat,         /* specific_heat        */
+    IAPWS_mw,                    /* molecular_weight     */
+    IAPWS_speed_of_sound,        /* speed_of_sound       */
+    IAPWS_viscosity,             /* viscosity            */
+    IAPWS_thermal_conductivity,  /* thermal_conductivity */
+    IAPWS_rho_t,                 /* drho/dT |const p     */
+    IAPWS_rho_p,                 /* drho/dp |const T     */
+    IAPWS_enthalpy_t,            /* dh/dT |const p       */
+    IAPWS_enthalpy_p             /* dh/dp |const T       */
+};
+#pragma endregion RGEOS
