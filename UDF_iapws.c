@@ -60,13 +60,13 @@ typedef struct
 } Array2D;
 
 
-Array1D createArrayStruct1D(int ROWS);
-Array1D extractColumnFromTable(Array2D arrayIpt, int selectedColumn);
+Array1D createArrayStruct1D(unsigned int ROWS);
+Array1D extractColumnFromTable(Array2D arrayIpt, unsigned int selectedColumn);
 Array1D createUniqueValuesArray1D(Array1D arrayIpt);
 Array1D differences1D(double value, Array1D arrayIpt);
 
-Array2D createArrayStruct2D(int ROWS, int COLUMNS);
-Array2D getRectangle(int index, Array2D arrayIpt, int yUnique);
+Array2D createArrayStruct2D(unsigned int ROWS, unsigned int COLUMNS);
+Array2D getRectangle(unsigned int index, Array2D arrayIpt, unsigned int yUnique);
 Array2D readFromCSV(char *filePath);
 
 
@@ -134,66 +134,6 @@ double absError(double value1, double value2);
 double drand(double loBound, double hiBound);
 
 const int debugLevel 	= Main;
-
-
-
-
-int main()
-{
-	double total;
-	int attempt;
-	double tempK, pressMPa, bilerp;
-
-	clock_t start, end;
-	fprintfWrapper_newline_MAIN("start -> debugLevel = %d", debugLevel);
-
-	char *tablefilePath		= "table.csv";
-
-	total = 0;
-	start = clock();
-	Array2D readTable		= readFromCSV(tablefilePath);
-	end = clock();
-	fprintfWrapper_newline_MAIN("Finished reading the csv in the main loop: \t%lf!", timer(start, end));
-	
-	total = 0;
-	start = clock();
-	Array1D temperatures		= extractColumnFromTable(readTable, 0);
-	sortAscendingStruct1D(temperatures);
-	Array1D uniqueTemperatures	= createUniqueValuesArray1D(temperatures);
-	end = clock();;
-	fprintfWrapper_newline_MAIN("Finished creating the unique temperatures in the main loop: \t%lf!", timer(start, end));
-	
-	total = 0;
-	start = clock();
-	Array1D pressures		= extractColumnFromTable(readTable, 1);
-	sortAscendingStruct1D(pressures);
-	Array1D uniquePressures = createUniqueValuesArray1D(pressures);	
-	end = clock();
-	fprintfWrapper_newline_MAIN("Finished creating the unique pressures in the main loop: \t%lf!", timer(start, end));
-	
-
-
-	attempt = 0;
-	total = 0;
-	while (attempt < BENCHMARK_TRIES)
-	{
-		tempK = drand(uniqueTemperatures.array[0], uniqueTemperatures.array[uniqueTemperatures.last]);
-		pressMPa = drand(uniquePressures.array[0], uniquePressures.array[uniquePressures.last]);
-        	if (attempt % 50 == 0) {fprintfWrapper_newline_MAIN("%d: [%lf K, %lf MPa]", attempt, tempK, pressMPa);}
-
-		start = clock();
-		bilerp = interpolation2D_bilinear(readTable, tempK, pressMPa, RHO, uniqueTemperatures, uniquePressures);
-		end = clock();
-		total += timer(start, end);
-		attempt ++;
-	}
-	total = total/(double)(BENCHMARK_TRIES);
-	fprintfWrapper_newline_MAIN("Bilerp [%lf, %lf]: %lf\t%lfs", tempK, pressMPa, bilerp, total);
-
-	fprintfWrapper_newline_MAIN("end");
-	return 1;
-}
-
 
 #pragma region RGEOS
 #pragma region CONVENIENCE
@@ -357,7 +297,7 @@ void copyArray1DNative_toArray1DNative(double *source, double *target, int count
 		fprintfWrapper_newline_tail("copyArray1DNative_toArray1DNative: failure -> Memory allocation failed!");
 		exit(1); // Handle allocation failure
 	}
-	int index;
+	unsigned int index;
 
 	free(target);
 	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DNative: freed the target array!");
@@ -377,7 +317,7 @@ void copyArray1DNative_toArray1DNative(double *source, double *target, int count
 void copyArray1DNative_toArray1DStruct(double *source, Array1D *target)
 {
 	fprintfWrapper_newline_head("copyArray1DNative_toArray1DStruct: start -> %d elements!", target->count);
-	int index;
+	unsigned int index;
 	free(target->array);
 	fprintfWrapper_newline_mid_upper("copyArray1DNative_toArray1DStruct: freed the target array!");
 
@@ -407,7 +347,7 @@ void copyArray1Dstruct_toArray1DNative(Array1D *source, double *target)
 		fprintfWrapper_newline_tail("copyArray1Dstruct_toArray1DNative: failure ->Memory allocation failed!");
 		exit(1); // Handle allocation failure
 	}
-	int index;
+	unsigned int index;
 	free(target);
 	fprintfWrapper_newline_mid_upper("copyArray1Dstruct_toArray1DNative: freed the target array!");
 	target = (double*)malloc(sizeof(double) *(source->count));
@@ -427,11 +367,11 @@ void copyArray1Dstruct_toArray1DNative(Array1D *source, double *target)
 
 
 #pragma region ARRAY_CREATION
-Array1D createArrayStruct1D(int ROWS)
+Array1D createArrayStruct1D(unsigned int ROWS)
 {
 	fprintfWrapper_newline_head("createArrayStruct1D: start -> %d elements!", ROWS);
 	Array1D arrStruct;
-	int index;
+	unsigned int index;
 	arrStruct.array = (double*)malloc(ROWS * sizeof(double));
 	arrStruct.count = ROWS;
 	arrStruct.last 	= arrStruct.count - 1;
@@ -440,11 +380,11 @@ Array1D createArrayStruct1D(int ROWS)
 	return arrStruct;
 }
 
-Array2D createArrayStruct2D(int ROWS, int COLUMNS)
+Array2D createArrayStruct2D(unsigned int ROWS, unsigned int COLUMNS)
 {
 	fprintfWrapper_newline_head("createArrayStruct2D: start -> %d ROWS and %d COLUMNS!", ROWS, COLUMNS);
 	Array2D arrStruct;
-	int index1, index2;
+	unsigned int index1, index2;
 	arrStruct.array			= (double**)malloc(ROWS * sizeof(double*));
 	arrStruct.rows			= ROWS;
 	arrStruct.lastRow		= ROWS-1;
@@ -501,10 +441,10 @@ Array1D createUniqueValuesArray1D(Array1D arrayIpt)
 	return nuArray;
 }
 
-Array1D extractColumnFromTable(Array2D arrayIpt, int selectedColumn)
+Array1D extractColumnFromTable(Array2D arrayIpt, unsigned int selectedColumn)
 {
 	fprintfWrapper_newline_head("extractColumnFromTable: start!");
-	int rowIndex_arrayIpt;
+	unsigned int rowIndex_arrayIpt;
 	fprintfWrapper_newline_mid_upper("extractColumnFromTable: getting the numLines!");
 
 	fprintfWrapper_newline_mid_upper("extractColumnFromTable: extracted column will have %d lines!", arrayIpt.rows);
@@ -532,7 +472,7 @@ Array1D differences1D(double value, Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("differences1D: start -> value: %lf", value);
 	Array1D nuArray = createArrayStruct1D(arrayIpt.count);
-	int index;
+	unsigned int index;
 
 	fprintfWrapper_newline_mid_upper("differences1D: filling the array with abs. value of differences!");
 	for (index = 0; index < nuArray.count; index++)
@@ -544,7 +484,7 @@ Array1D differences1D(double value, Array1D arrayIpt)
 	return nuArray;
 }
 
-Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
+Array2D getRectangle(unsigned int index, Array2D arrayIpt, unsigned int yUnique)
 {
 	fprintfWrapper_newline_head("getRectangle: start -> target index: %d [%lf, %lf], array length: %d, array offset: %d",
 	index, arrayIpt.array[index][T], arrayIpt.array[index][P],
@@ -562,7 +502,7 @@ Array2D getRectangle(int index, Array2D arrayIpt, int yUnique)
 
 
 
-	int TOP_LEFT, TOP_RIGHT, BOT_LEFT, BOT_RIGHT;
+	unsigned int TOP_LEFT, TOP_RIGHT, BOT_LEFT, BOT_RIGHT;
 	Array2D nuArray = createArrayStruct2D(4, arrayIpt.columns);
 	fprintfWrapper_newline_mid_upper("getRectangle: rectangle initialized!");
 
@@ -656,8 +596,9 @@ Array2D readFromCSV(char *filePath)
 {
 	fprintfWrapper_newline_head("readFromCSV: start -> from %s!", filePath);
 	double stringToNumber;
-	int position	= 0;
-	int lineNum	= 0; 
+	unsigned int position	= 0;
+	unsigned int lineNum	= 0; 
+    unsigned int columnIndex	= 0;
 	int rowCount 	= countLinesFile_noHeader(filePath);
 	int columnCount = countColumnsFile(filePath);
 
@@ -682,7 +623,7 @@ Array2D readFromCSV(char *filePath)
 
 			fprintfWrapper_newline_mid_lower("line: %s", line);
 			if (line[0] == '\n') {continue;}
-			int columnIndex	= 0;
+			columnIndex	= 0;
 			data = strtok(line, ", ");
 
 
@@ -748,7 +689,7 @@ void swap(double* a, double* b)
 	*b = temp;
 }
 
-int partition(double arr[], int low, int high)
+int partition(double arr[], unsigned int low, unsigned int high)
 {
 	double pivot = arr[high];
 	int i = low - 1;
@@ -766,7 +707,7 @@ int partition(double arr[], int low, int high)
 	return i + 1;
 }
 
-void quickSort(double arr[], int count)
+void quickSort(double arr[], unsigned int count)
 {
 	fprintfWrapper_newline_head("quickSort: start");
 	if (debugLevel == 3) {printArrayNative1D_double(arr, count);}
@@ -775,11 +716,11 @@ void quickSort(double arr[], int count)
 	fprintfWrapper_newline_tail("quickSort: success");
 }
 
-void quickSort_inner(double arr[], int low, int high)
+void quickSort_inner(double arr[],  unsigned int low, unsigned int high)
 {
 	if (low < high)
 	{
-		int partitionIndex = partition(arr, low, high);
+		unsigned int partitionIndex = partition(arr, low, high);
 		quickSort_inner(arr, low, partitionIndex - 1);
 		quickSort_inner(arr, partitionIndex + 1, high);
 	}
@@ -816,7 +757,7 @@ bool compare(double compared, double reference)
 
 bool valueInArray(double compared, Array1D arrayIpt)
 {
-	int index	= 0;
+	unsigned int index	= 0;
 	double value	= 0;
 	for (index = 0; index < arrayIpt.count; index++)
 	{
@@ -839,7 +780,7 @@ void printArrayNative1D_string(char **arrayIpt, int length)
 	if (debugLevel>= MainAndFuncboundsAndUpper)
 	{
 		fprintfWrapper_newline_head("printArrayNative1D_string: start!");
-		int index;
+		unsigned int index;
 		printf("[");
 		for (index = 0; index < length; index++)
 		{
@@ -856,7 +797,7 @@ void printArrayNative1D_double(double *arrayIpt, int length)
 	if (debugLevel >= MainAndFuncboundsAndUpper)
 	{
 		fprintfWrapper_newline_head("printArrayNative1D_double: start!");
-		int index;
+		unsigned int index;
 		printf("[");
 		for (index = 0; index < length; index++)
 		{
@@ -873,7 +814,7 @@ void printArrayStruct1D(Array1D arrayIpt)
 	if (debugLevel >= MainAndFuncboundsAndUpper)
 	{
 		fprintfWrapper_newline_head("printArrayStruct1D: start!");
-		int index;
+		unsigned int index;
 		printf("[");
 		for (index = 0; index < arrayIpt.count; index++)
 		{
@@ -890,7 +831,7 @@ void printArrayStruct2D(Array2D arrayIpt)
 	if (debugLevel >= MainAndFuncboundsAndUpper)
 	{
 		fprintfWrapper_newline_head("printArrayStruct2D: start!");
-		int indexRow, indexCol;
+		unsigned int indexRow, indexCol;
 		printf("[\n");
 		for (indexRow = 0; indexRow < arrayIpt.rows; indexRow++)
 		{
@@ -935,7 +876,7 @@ double interpolation2D_bilinear(Array2D arrayIpt, double x, double y, enum table
 
 
 	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: finding the closest value using the binary search in the read table!");
-	int closest_eff	= findClosest2D_efficient(x, y, uniqueX, uniqueY);
+	unsigned int closest_eff	= findClosest2D_efficient(x, y, uniqueX, uniqueY);
 
 	fprintfWrapper_newline_mid_upper("interpolation2D_bilinear: creating the bounding recangle to the closest value index: %d!", closest_eff);
 	Array2D rect	= getRectangle(closest_eff, arrayIpt, uniqueY.count);
@@ -1014,7 +955,7 @@ double minimumStruct1D_value(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("minimumStruct1D_value: start");
 	double minValue = 1.23456789e11;
-	int index = 0;
+	unsigned int index = 0;
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < minValue)
@@ -1031,8 +972,8 @@ int minimumStruct1D_index(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("minimumStruct1D_index: start");
 	double minValue = 1.23456789e11;
-	int index = 0;
-	int targetIndex = 0;
+	unsigned int index = 0;
+	unsigned int targetIndex = 0;
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < minValue)
@@ -1050,7 +991,7 @@ double maximumStruct1D_value(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("maximumStruct1D_value: start");
 	double maxValue = -1.23456789e11;
-	int index = 0;
+	unsigned int index = 0;
 	for (index = 0; index > arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < maxValue)
@@ -1067,8 +1008,8 @@ int maximumStruct1D_index(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("maximumStruct1D_index: start");
 	double maxValue = -1.23456789e11;
-	int index = 0;
-	int targetIndex = 0;
+	unsigned int index = 0;
+	unsigned int targetIndex = 0;
 	for (index = 0; index > arrayIpt.count; index++)
 	{
 		if (arrayIpt.array[index] < maxValue)
@@ -1086,7 +1027,7 @@ double sumStruct1D_value(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("sumStruct1D_value: start");
 	double sum = 0.0;
-	int index = 0;
+	unsigned int index = 0;
 	for (index = 0; index < arrayIpt.count; index++)
 	{
 		sum = sum + arrayIpt.array[index];
@@ -1112,7 +1053,7 @@ int findClosest1D_linear(double variable, Array1D arrayIpt)
 	Array1D diffs = differences1D(variable, arrayIpt);
 	double minValue = minimumStruct1D_value(diffs);
 	printArrayStruct1D(diffs);
-	int index;
+	unsigned int index;
 
 	fprintfWrapper_newline_mid_lower("findClosest1D_linear: searching!");
 	for (index = 0; index < diffs.count; index++)
@@ -1208,7 +1149,7 @@ int countLinesFile(char *filePath)
 	{
 		fprintfWrapper_newline_mid_upper("countLinesFile: reading from %s", filePath);
 		char buf[BUFFER_SIZE];
-		int counter = 0;
+		unsigned int counter = 0;
 		for(;;)
 		{
 				size_t res = fread(buf, 1, BUFFER_SIZE, file);
@@ -1218,7 +1159,7 @@ int countLinesFile(char *filePath)
 					exit(1);
 				}
 
-				int i;
+				unsigned int i;
 				for(i = 0; i < res; i++)
 				{
 					if (buf[i] == '\n') {counter++ ;}
@@ -1238,7 +1179,7 @@ int countLinesFile(char *filePath)
 int countLinesFile_noHeader(char *filePath)
 {
 	fprintfWrapper_newline_head("countLinesFile_noHeader: start -> from %s without a header!", filePath);
-	int result = countLinesFile(filePath) - 1;
+	unsigned int result = countLinesFile(filePath) - 1;
 	fprintfWrapper_newline_tail("countLinesFile_noHeader: success -> %d lines!", result);
 	return result;
 }
@@ -1251,13 +1192,13 @@ int countColumnsFile(char *filePath)
 	{
 		fprintfWrapper_newline_mid_upper("countColumnsFile: reading %s", filePath);
 		char buf[BUFFER_SIZE];
-		int counter = 0;
+		unsigned int counter = 0;
 		for(;;)
 		{
 				size_t res = fread(buf, 1, BUFFER_SIZE, file);
 				if (ferror(file)) { return -1; }
 
-				int i;
+				usigned int i;
 				for(i = 0; i < res; i++)
 			{
 						if (buf[i] == '\n') {break ;}
@@ -1280,8 +1221,8 @@ int countColumnsFile(char *filePath)
 int countUniqueVals1D(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("countUniqueVals1D: start!");
-	int index = 0;
-	int count = 0;
+	unsigned int index = 0;
+	unsigned int count = 0;
 	fprintfWrapper_newline_mid_upper("countUniqueVals1D: counting!");
 	for (index = 0; index < arrayIpt.count; index++)
 	{
@@ -1298,8 +1239,8 @@ int countUniqueVals1D(Array1D arrayIpt)
 int countNonUniqueVals1D(Array1D arrayIpt)
 {
 	fprintfWrapper_newline_head("countNonUniqueVals1D: start!");
-	int index = 0;
-	int count = 0;
+	unsigned int index = 0;
+	usigned int count = 0;
 	fprintfWrapper_newline_mid_upper("countNonUniqueVals1D: counting!");
 	for (index = 0; index < arrayIpt.count; index++)
 	{
